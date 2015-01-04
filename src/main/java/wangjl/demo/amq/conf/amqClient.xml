@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+             http://www.springframework.org/schema/beans 
+             http://www.springframework.org/schema/beans/spring-beans-3.0.xsd       
+             http://www.springframework.org/schema/mvc 
+             http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd
+             http://www.springframework.org/schema/context 
+             http://www.springframework.org/schema/context/spring-context-3.0.xsd        
+             http://www.springframework.org/schema/aop 
+             http://www.springframework.org/schema/aop/spring-aop-3.0.xsd       
+             http://www.springframework.org/schema/tx 
+             http://www.springframework.org/schema/tx/spring-tx.xsd       
+             http://www.springframework.org/schema/jee
+             http://www.springframework.org/schema/jee/spring-jee-2.5.xsd"
+	xmlns:context="http://www.springframework.org/schema/context">
+
+	<context:annotation-config />
+
+	<!-- a pooling based JMS provider -->
+	<bean id="jmsPooledConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory"
+		destroy-method="stop">
+		<property name="connectionFactory">
+			<bean class="org.apache.activemq.ActiveMQConnectionFactory">
+				<property name="brokerURL">
+					<value>tcp://192.168.1.51:61616</value>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<!-- Spring JMS Template -->
+	<bean id="myJmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory">
+			<ref local="jmsPooledConnectionFactory" />
+		</property>
+	</bean>
+
+	<!-- TestMessage消息发送器 -->
+	<bean id="testMessageSender" class="wuwc.demo.amq.base.TestMessageSender">
+		<property name="jmsTemplate">
+			<ref local="myJmsTemplate" />
+		</property>
+	</bean>
+	
+	<!-- TestMessage消息监听容器 -->
+	<bean id="testMessageListenerContainer"
+		class="org.springframework.jms.listener.SimpleMessageListenerContainer">
+		<property name="connectionFactory" ref="jmsPooledConnectionFactory" />
+		<property name="destinationName" value="sts.test.responseQueue" />
+		<property name="concurrentConsumers" value="20" />
+		<property name="messageListener" ref="testMessageListener" />
+	</bean>
+
+	<!-- TestMessage消息监听 -->
+	<bean id="testMessageListener" class="wuwc.demo.amq.base.TestMessageListener">
+		<property name="queueName" value="sts.test.responseQueue" />
+		<property name="messageProcessService" ref="testMessageResponseProcessService" />
+	</bean>
+	
+	<!-- TestMessage响应消息处理服务 -->
+	<bean id="testMessageResponseProcessService" class="wuwc.demo.amq.base.MessageResponseProcessServiceImpl">
+	</bean>
+
+</beans>
